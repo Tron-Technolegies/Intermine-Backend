@@ -1,0 +1,38 @@
+import * as dotenv from "dotenv";
+dotenv.config();
+import express from "express";
+import cookieParser from "cookie-parser";
+import mongoose from "mongoose";
+import morgan from "morgan";
+import errorHandleMiddleware from "./middlewares/errorHandlingMiddleware.js";
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+if (process.env.NODE_ENV === "development") {
+  app.use(morgan("tiny"));
+}
+
+app.get("/", (req, res) => {
+  res.send("<h1>Welcome to Intermine Server</h1>");
+});
+
+app.use("/*path", (req, res) => {
+  res.status(404).json({ message: "Not Found in Server" });
+});
+
+app.use(errorHandleMiddleware);
+
+try {
+  await mongoose.connect(process.env.MONGODB_URI);
+  console.log(`Database connected successfully`);
+  app.listen(port, () => {
+    console.log(`Server started listening to port ${port}`);
+  });
+} catch (error) {
+  console.log(error);
+  process.exit(1);
+}
