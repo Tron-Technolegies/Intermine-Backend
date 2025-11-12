@@ -19,6 +19,7 @@ const UserSchema = new Schema(
     },
     password: {
       type: String,
+      select: false,
     },
     address: {
       type: {
@@ -57,5 +58,11 @@ const UserSchema = new Schema(
   { timestamps: true }
 );
 
+UserSchema.set("toJSON", {
+  transform: function (doc, ret) {
+    delete ret.password;
+    return ret;
+  },
+});
 const User = model("User", UserSchema);
 export default User;

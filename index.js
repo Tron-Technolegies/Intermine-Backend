@@ -6,6 +6,8 @@ import mongoose from "mongoose";
 import morgan from "morgan";
 import errorHandleMiddleware from "./middlewares/errorHandlingMiddleware.js";
 
+import authRouter from "./routers/authRouter.js";
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -19,6 +21,8 @@ if (process.env.NODE_ENV === "development") {
 app.get("/", (req, res) => {
   res.send("<h1>Welcome to Intermine Server</h1>");
 });
+
+app.use("/api/v1/auth", authRouter);
 
 app.use("/*path", (req, res) => {
   res.status(404).json({ message: "Not Found in Server" });
