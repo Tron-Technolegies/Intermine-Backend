@@ -47,3 +47,30 @@ export const validateLoginInput = withValidationErrors([
     .withMessage("Invalid Email format"),
   body("password").notEmpty().withMessage("Password field is required"),
 ]);
+
+export const validateForgotPassword = withValidationErrors([
+  body("email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid Email format"),
+]);
+
+export const validateVerifyOTP = withValidationErrors([
+  body("email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid Email format"),
+  body("code").notEmpty().withMessage("Code is required"),
+]);
+
+export const validateResetPassword = withValidationErrors([
+  body("email")
+    .notEmpty()
+    .withMessage("Email is required")
+    .isEmail()
+    .withMessage("Invalid Email format"),
+  body("code").notEmpty().withMessage("Code is required"),
+  body("password").notEmpty().withMessage("Password field is required"),
+]);
