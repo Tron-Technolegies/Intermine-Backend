@@ -6,6 +6,9 @@ const MinerSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    clientName: {
+      type: String,
+    },
     workerId: {
       type: String,
       required: true,

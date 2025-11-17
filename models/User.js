@@ -43,6 +43,9 @@ const UserSchema = new Schema(
     lastName: {
       type: String,
     },
+    phone: {
+      type: String,
+    },
     companyName: {
       type: String,
     },
@@ -53,6 +56,19 @@ const UserSchema = new Schema(
     purchaseAgreement: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Agreement",
+    },
+    role: {
+      type: String,
+      default: "Client",
+      enum: ["Client", "Admin"],
+    },
+    owned: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Miner",
+        },
+      ],
     },
   },
   { timestamps: true }

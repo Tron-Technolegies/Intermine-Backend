@@ -12,6 +12,7 @@ export const registerClient = async (req, res) => {
     const hashedPassword = await hashPassword(password);
     const user = await User.create({
       clientName: name,
+      firstName: name,
       clientId: clientId,
       email: email.toLowerCase(),
       password: hashedPassword,
@@ -46,7 +47,7 @@ export const loginClient = async (req, res) => {
     if (!user) throw new NotFoundError("No user found");
     const isPasswordCorrect = await comparePassword(password, user.password);
     if (!isPasswordCorrect) throw new BadRequestError("Invalid Credentials");
-    const token = createJWT({ userId: user._id });
+    const token = createJWT({ userId: user._id, role: user.role });
     const tenDay = 1000 * 60 * 60 * 24 * 10;
     res.cookie("token", token, {
       httpOnly: true,
