@@ -125,3 +125,8 @@ export const validateAddMiner = withValidationErrors([
   body("power").notEmpty().withMessage("power is required"),
   body("macAddress").notEmpty().withMessage("Mac Address is required"),
 ]);
+
+//Issues Validation
+export const validateAddIssueType = withValidationErrors([
+  body("issueType").notEmpty().withMessage("Issue Type is required"),
+]);

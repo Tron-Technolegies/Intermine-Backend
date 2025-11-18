@@ -8,8 +8,11 @@ import errorHandleMiddleware from "./middlewares/errorHandlingMiddleware.js";
 
 import authRouter from "./routers/authRouter.js";
 import userRouter from "./routers/userRouter.js";
+import adminMinerRouter from "./routers/adminMinerRouter.js";
+import adminClientRouter from "./routers/adminClientRouter.js";
 import minerRouter from "./routers/minerRouter.js";
-import { authenticateUser } from "./middlewares/authMiddleWare.js";
+import adminIssueRouter from "./routers/adminIssueRouter.js";
+import { authenticateUser, isAdmin } from "./middlewares/authMiddleWare.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -28,6 +31,9 @@ app.get("/", (req, res) => {
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/user", authenticateUser, userRouter);
 app.use("/api/v1/miner", authenticateUser, minerRouter);
+app.use("/api/v1/admin/miner", authenticateUser, adminMinerRouter);
+app.use("/api/v1/admin/user", authenticateUser, isAdmin, adminClientRouter);
+app.use("/api/v1/admin/issue", authenticateUser, isAdmin, adminIssueRouter);
 
 app.use("/*path", (req, res) => {
   res.status(404).json({ message: "Not Found in Server" });

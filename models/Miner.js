@@ -40,11 +40,12 @@ const MinerSchema = new Schema(
     serviceProvider: {
       type: String,
     },
-    issueHistory: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Issue",
-      default: [],
-    },
+    issueHistory: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Issue",
+      },
+    ],
     hashRate: {
       type: Number,
     },
