@@ -86,4 +86,82 @@ export const getAllMiners = async (req, res) => {
   }
 };
 
-//Get User Owned Miner
+//Get All Offline Miners
+export const getOfflineMiners = async (req, res) => {
+  try {
+    const { currentPage, query } = req.query;
+    const page = currentPage || 1;
+    const limit = 15;
+    const skip = (page - 1) * limit;
+    const matchStage = { status: "offline" };
+    if (query && query.trim() !== "") {
+      const searchRegex = new RegExp(query, "i");
+      matchStage.$or = [
+        { "client.clientName": searchRegex },
+        { "client.clientId": searchRegex },
+        { "currentIssue.issue.issueType": searchRegex },
+      ];
+    }
+    const pipeline = [
+      {
+        $lookup: {
+          from: "users",
+          let: { clientId: "$client" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$clientId"] } } },
+            { $project: { clientId: 1, clientName: 1 } },
+          ],
+          as: "client",
+        },
+      },
+      { $unwind: "$client" },
+      {
+        $lookup: {
+          from: "issues",
+          let: { currentIssueId: "$currentIssue" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$currentIssueId"] } } },
+            {
+              $lookup: {
+                from: "issuetypes",
+                let: { typeId: "$issue" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$typeId"] } } },
+                  { $project: { issueType: 1 } },
+                ],
+                as: "issue",
+              },
+            },
+            { $unwind: "$issue" },
+            {
+              $lookup: {
+                from: "messages",
+                localField: "messages",
+                foreignField: "_id",
+                as: "messages",
+              },
+            },
+            { $project: { issue: 1, status: 1, messages: 1 } },
+          ],
+          as: "currentIssue",
+        },
+      },
+      { $unwind: "$currentIssue" },
+      { $sort: { createdAt: -1 } },
+      { $match: matchStage },
+      { $skip: skip },
+      { $limit: limit },
+    ];
+    const miners = await Miner.aggregate(pipeline);
+    if (miners.length < 1) throw new NotFoundError("No miners found");
+    const countPipeline = [...pipeline.slice(0, -2), { $count: "total" }];
+    const countResult = await Miner.aggregate(countPipeline);
+    const totalMiners = countResult[0]?.total || 0;
+    const totalPages = Math.ceil(totalMiners / limit);
+    res.status(200).json({ miners, totalPages });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};

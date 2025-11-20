@@ -40,6 +40,10 @@ const MinerSchema = new Schema(
     serviceProvider: {
       type: String,
     },
+    currentIssue: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Issue",
+    },
     issueHistory: [
       {
         type: mongoose.Schema.Types.ObjectId,

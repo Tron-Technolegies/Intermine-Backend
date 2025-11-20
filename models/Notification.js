@@ -7,10 +7,11 @@ const NotificationSchema = new Schema(
     },
     client: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Notification",
+      ref: "User",
     },
     status: {
       type: String,
+      enum: ["read", "unread"],
     },
     miner: {
       type: mongoose.Schema.Types.ObjectId,

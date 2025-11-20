@@ -130,3 +130,23 @@ export const validateAddMiner = withValidationErrors([
 export const validateAddIssueType = withValidationErrors([
   body("issueType").notEmpty().withMessage("Issue Type is required"),
 ]);
+
+export const validateAddIssue = withValidationErrors([
+  body("issue")
+    .notEmpty()
+    .withMessage("Issue is required")
+    .isMongoId()
+    .withMessage("Invalid Issue Id"),
+  body("miner")
+    .notEmpty()
+    .withMessage("miner is required")
+    .isMongoId()
+    .withMessage("Invalid miner Id"),
+  body("user")
+    .notEmpty()
+    .withMessage("user is required")
+    .isMongoId()
+    .withMessage("Invalid user Id"),
+  body("workerAddress").notEmpty().withMessage("Worker Address is required"),
+  body("offline").notEmpty().withMessage("Is Offline is required"),
+]);
