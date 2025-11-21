@@ -90,7 +90,7 @@ export const getAllMiners = async (req, res) => {
 export const getOfflineMiners = async (req, res) => {
   try {
     const { currentPage, query } = req.query;
-    const page = currentPage || 1;
+    const page = Number(currentPage) || 1;
     const limit = 15;
     const skip = (page - 1) * limit;
     const matchStage = { status: "offline" };
@@ -103,6 +103,7 @@ export const getOfflineMiners = async (req, res) => {
       ];
     }
     const pipeline = [
+      { $match: matchStage },
       {
         $lookup: {
           from: "users",
@@ -148,7 +149,7 @@ export const getOfflineMiners = async (req, res) => {
       },
       { $unwind: "$currentIssue" },
       { $sort: { createdAt: -1 } },
-      { $match: matchStage },
+
       { $skip: skip },
       { $limit: limit },
     ];

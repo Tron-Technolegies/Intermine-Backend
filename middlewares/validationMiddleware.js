@@ -150,3 +150,18 @@ export const validateAddIssue = withValidationErrors([
   body("workerAddress").notEmpty().withMessage("Worker Address is required"),
   body("offline").notEmpty().withMessage("Is Offline is required"),
 ]);
+
+export const validateAddIssueByClient = withValidationErrors([
+  body("issue")
+    .notEmpty()
+    .withMessage("Issue is required")
+    .isMongoId()
+    .withMessage("Invalid Issue Id"),
+  body("miner")
+    .notEmpty()
+    .withMessage("miner is required")
+    .isMongoId()
+    .withMessage("Invalid miner Id"),
+  body("workerAddress").notEmpty().withMessage("Worker Address is required"),
+  body("description").notEmpty().withMessage("Description is required"),
+]);

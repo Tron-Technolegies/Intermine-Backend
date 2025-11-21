@@ -77,7 +77,7 @@ export const addNewIssue = async (req, res) => {
 export const getAllIssues = async (req, res) => {
   try {
     const { status, currentPage, query } = req.query;
-    const page = currentPage || 1;
+    const page = Number(currentPage) || 1;
     const limit = 15;
     const skip = (page - 1) * limit;
     const matchStage = {};
@@ -95,6 +95,7 @@ export const getAllIssues = async (req, res) => {
       ];
     }
     const pipeline = [
+      { $match: matchStage },
       {
         $lookup: {
           from: "users",
@@ -144,7 +145,6 @@ export const getAllIssues = async (req, res) => {
       },
       { $unwind: "$issue" },
       { $sort: { createdAt: -1 } },
-      { $match: matchStage },
       { $skip: skip },
       { $limit: limit },
     ];

@@ -17,6 +17,10 @@ const NotificationSchema = new Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Miner",
     },
+    isForAdmin: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

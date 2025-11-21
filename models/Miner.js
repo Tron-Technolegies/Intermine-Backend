@@ -43,6 +43,7 @@ const MinerSchema = new Schema(
     currentIssue: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Issue",
+      default: null,
     },
     issueHistory: [
       {
