@@ -165,3 +165,20 @@ export const validateAddIssueByClient = withValidationErrors([
   body("workerAddress").notEmpty().withMessage("Worker Address is required"),
   body("description").notEmpty().withMessage("Description is required"),
 ]);
+
+export const validatePoolChangeRequest = withValidationErrors([
+  body("miner")
+    .notEmpty()
+    .withMessage("Unable to access the current miner")
+    .isMongoId()
+    .withMessage("Invalid miner Id"),
+  body("workerAddress")
+    .notEmpty()
+    .withMessage("Unable to access current workerId"),
+  body("pool").notEmpty().withMessage("New Pool id is required"),
+  body("worker").notEmpty().withMessage("New Worker Address is required"),
+]);
+
+export const validateStatusChange = withValidationErrors([
+  body("status").notEmpty().withMessage("Status is required"),
+]);

@@ -23,6 +23,7 @@ const MinerSchema = new Schema(
     },
     status: {
       type: String,
+      enum: ["online", "offline"],
     },
     location: {
       type: String,
@@ -51,6 +52,7 @@ const MinerSchema = new Schema(
         ref: "Issue",
       },
     ],
+    changeHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: "Issue" }],
     hashRate: {
       type: Number,
     },

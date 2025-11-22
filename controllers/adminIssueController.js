@@ -143,7 +143,12 @@ export const getAllIssues = async (req, res) => {
           as: "issue",
         },
       },
-      { $unwind: "$issue" },
+      {
+        $unwind: {
+          path: "$issue",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
       { $sort: { createdAt: -1 } },
       { $skip: skip },
       { $limit: limit },
@@ -155,6 +160,52 @@ export const getAllIssues = async (req, res) => {
     const totalIssues = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalIssues / limit);
     res.status(200).json({ issues, totalPages });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//update status by admin
+export const updateIssueStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const issue = await Issue.findById(req.params.id).populate("issue");
+    if (!issue) throw new NotFoundError("No issue found");
+    if (status === "Warranty") {
+      issue.status = "Warranty";
+      await issue.save();
+      return res.status(200).json({ message: "Status changed", issue });
+    }
+    if (status === "Resolved") {
+      let notification;
+      issue.status = "Resolved";
+      const miner = await Miner.findById(issue.miner);
+      if (!miner) throw new NotFoundError("Unable to find Miner");
+      miner.status = "online";
+      if (issue.type === "repair") {
+        miner.currentIssue = null;
+        notification = await Notification.create({
+          problem: `An issue ${issue.issue.issueType} has been successfully resolved for your miner ${miner.model} (${miner.workerId})`,
+          client: miner.client,
+          miner: miner._id,
+          status: "unread",
+        });
+      }
+      if (issue.type === "change") {
+        notification = await Notification.create({
+          problem: `The Pool Change request for your miner ${miner.model} (${miner.workerId}) has been approved`,
+          client: miner.client,
+          miner: miner._id,
+          status: "unread",
+        });
+      }
+      await miner.save();
+      await issue.save();
+      return res.status(200).json({ message: "success", notification, issue });
+    }
+    throw new BadRequestError("Invalid Status Type");
   } catch (error) {
     res
       .status(error.statusCode || 500)

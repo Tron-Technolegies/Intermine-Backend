@@ -166,3 +166,76 @@ export const getOfflineMiners = async (req, res) => {
       .json({ error: error.msg || error.message });
   }
 };
+
+//Get a single Miner
+export const getASingleMiner = async (req, res) => {
+  try {
+    const miner = await Miner.findById(req.params.id);
+    if (!miner) throw new NotFoundError("No miner found");
+    res.status(200).json(miner);
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//Edit a new Miner
+export const editMiner = async (req, res) => {
+  try {
+    const {
+      client,
+      workerId,
+      serialNumber,
+      model,
+      status,
+      location,
+      warranty,
+      poolAddress,
+      connectionDate,
+      serviceProvider,
+      hashRate,
+      power,
+      macAddress,
+    } = req.body;
+    const clientUser = await User.findById(client);
+    if (!clientUser) throw new NotFoundError("No client user found");
+    const miner = await Miner.findById(req.params.id);
+    if (!miner) throw new NotFoundError("No miner found");
+    if (miner.client.toString() !== clientUser._id.toString()) {
+      const oldClient = await User.findById(miner.client);
+      if (oldClient) {
+        oldClient.owned = oldClient.owned.filter(
+          (item) => item.toString() !== miner._id.toString()
+        );
+        await oldClient.save();
+      }
+      if (
+        !clientUser.owned.some((id) => id.toString() === miner._id.toString())
+      ) {
+        clientUser.owned.push(miner._id);
+      }
+      miner.client = client;
+      miner.clientName = clientUser.clientName;
+    }
+    miner.workerId = workerId;
+    miner.serialNumber = serialNumber;
+    miner.model = model;
+    miner.status = status;
+    miner.location = location;
+    miner.warranty = warranty;
+    miner.poolAddress = poolAddress;
+    miner.connectionDate = new Date(connectionDate);
+    miner.serviceProvider = serviceProvider;
+    miner.hashRate = hashRate;
+    miner.power = power;
+    miner.macAddress = macAddress;
+    await miner.save();
+    await clientUser.save();
+    res.status(200).json({ message: "successs", miner });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};

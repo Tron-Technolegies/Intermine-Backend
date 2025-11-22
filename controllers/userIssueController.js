@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
-import { BadRequestError, NotFoundError } from "../errors/customErrors.js";
+import {
+  BadRequestError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../errors/customErrors.js";
 import Issue from "../models/Issue.js";
 import IssueType from "../models/IssueType.js";
 import Miner from "../models/Miner.js";
@@ -114,6 +118,51 @@ export const getAllIssueStatsByClient = async (req, res) => {
       repair: stats[0].repair[0]?.count || 0,
     };
     res.status(200).json(result);
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//request pool and worker change
+export const requestPoolChange = async (req, res) => {
+  try {
+    const { worker, pool, miner, workerAddress } = req.body;
+    const targetMiner = await Miner.findById(miner);
+    if (!targetMiner)
+      throw new NotFoundError("The miner you are trying to change not found");
+    if (targetMiner.client.toString() !== req.user.userId.toString())
+      throw new UnauthorizedError("This operation is not authorised");
+    if (workerAddress !== targetMiner.workerId)
+      throw new BadRequestError("Invalid Worker Id ");
+
+    const newIssue = await Issue.create({
+      changeRequest: {
+        pool: pool,
+        worker: worker,
+      },
+      miner: miner,
+      user: req.user.userId,
+      workerAddress: workerAddress,
+      status: "pending",
+      serviceProvider: targetMiner.serviceProvider,
+      type: "change",
+    });
+    targetMiner.changeHistory.push(newIssue._id);
+    await targetMiner.save();
+    const newNotification = await Notification.create({
+      problem: `A request for pool/worker change has been received for the miner ${targetMiner.model} (${targetMiner.workerId})- ${targetMiner.clientName}`,
+      client: req.user.userId,
+      miner: miner,
+      status: "unread",
+      isForAdmin: true,
+    });
+    res.status(200).json({
+      message: "Request has been submitted",
+      newNotification,
+      newIssue,
+    });
   } catch (error) {
     res
       .status(error.statusCode || 500)

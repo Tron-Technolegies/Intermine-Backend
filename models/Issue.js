@@ -5,10 +5,13 @@ const IssueSchema = new Schema(
     issue: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "IssueType",
-      required: true,
     },
     workerAddress: {
       type: String,
+    },
+    changeRequest: {
+      pool: String,
+      worker: String,
     },
     miner: {
       type: mongoose.Schema.Types.ObjectId,
