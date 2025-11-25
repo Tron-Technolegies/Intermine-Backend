@@ -73,15 +73,7 @@ export const getAllAdminNotification = async (req, res) => {
     if (status && status !== "ALL") {
       matchStage.status = status;
     }
-    if (query && query.trim() !== "") {
-      const searchRegex = new RegExp(query, "i");
-      matchStage.$or = [
-        { problem: searchRegex },
-        { "client.clientName": searchRegex },
-        { "miner.model": searchRegex },
-        { "miner.workerId": searchRegex },
-      ];
-    }
+
     const pipeline = [
       { $match: matchStage },
       {
@@ -115,14 +107,29 @@ export const getAllAdminNotification = async (req, res) => {
         },
       },
       { $unwind: "$miner" },
+    ];
+    if (query && query.trim() !== "") {
+      const searchRegex = new RegExp(query, "i");
+      pipeline.push({
+        $match: {
+          $or: [
+            { problem: searchRegex },
+            { "client.clientName": searchRegex },
+            { "miner.model": searchRegex },
+            { "miner.workerId": searchRegex },
+          ],
+        },
+      });
+    }
+    pipeline.push(
       { $sort: { createdAt: -1 } },
       { $skip: skip },
-      { $limit: limit },
-    ];
+      { $limit: limit }
+    );
     const notifications = await Notification.aggregate(pipeline);
     if (notifications.length < 1)
       throw new NotFoundError("No notifications found");
-    const countPipeLine = [...pipeline.slice(0, -2), { $count: "total" }];
+    const countPipeLine = [...pipeline.slice(0, -3), { $count: "total" }];
     const countResult = await Notification.aggregate(countPipeLine);
     const totalNotifications = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalNotifications / limit);

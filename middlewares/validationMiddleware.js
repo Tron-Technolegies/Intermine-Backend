@@ -114,7 +114,11 @@ export const validateAddMiner = withValidationErrors([
   body("serialNumber").notEmpty().withMessage("Serial Number is required"),
   body("model").notEmpty().withMessage("Model is required"),
   body("status").notEmpty().withMessage("Status is required"),
-  body("location").notEmpty().withMessage("Location is required"),
+  body("location")
+    .notEmpty()
+    .withMessage("Location is required")
+    .isMongoId()
+    .withMessage("Location must be in MongoDB ID"),
   body("warranty").notEmpty().withMessage("Warranty is required"),
   body("poolAddress").notEmpty().withMessage("Pool Address is required"),
   body("connectionDate").notEmpty().withMessage("Connection Date is required"),
@@ -181,4 +185,45 @@ export const validatePoolChangeRequest = withValidationErrors([
 
 export const validateStatusChange = withValidationErrors([
   body("status").notEmpty().withMessage("Status is required"),
+]);
+
+//ADMIN CLIENT VALIDATION
+export const validateAddInternalNote = withValidationErrors([
+  body("note").notEmpty().withMessage("Note is required"),
+  body("user")
+    .notEmpty()
+    .withMessage("User is required")
+    .isMongoId()
+    .withMessage("User must be in MongoDB Id format"),
+]);
+
+//AGREEMENT VALIDATION
+export const validateSendAgreement = withValidationErrors([
+  body("type").notEmpty().withMessage("Type is required"),
+  body("user")
+    .notEmpty()
+    .withMessage("User is required")
+    .isMongoId()
+    .withMessage("User must be in MongoDB Id format"),
+]);
+
+export const validateSignAgreement = withValidationErrors([
+  body("agreementId")
+    .notEmpty()
+    .withMessage("Agreement Id is required")
+    .isMongoId()
+    .withMessage("Invalid Agreement Id"),
+  body("signature").notEmpty().withMessage("Signature is required"),
+]);
+
+//MINING FARM
+export const validateAddMiningFarm = withValidationErrors([
+  body("farm").notEmpty().withMessage("Farm Name is required"),
+  body("capacity").notEmpty().withMessage("Capacity is required"),
+]);
+
+export const validateUpdateMiningFarm = withValidationErrors([
+  body("farm").notEmpty().withMessage("Farm Name is required"),
+  body("capacity").notEmpty().withMessage("Capacity is required"),
+  body("farmId").notEmpty().withMessage("Farm Id is required"),
 ]);

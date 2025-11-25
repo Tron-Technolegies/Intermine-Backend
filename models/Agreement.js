@@ -5,6 +5,7 @@ export const AgreementSchema = new Schema(
     agreementType: {
       type: String,
       required: true,
+      enum: ["Mining", "Purchase"],
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -21,6 +22,9 @@ export const AgreementSchema = new Schema(
       type: Date,
     },
     content: {
+      type: String,
+    },
+    signature: {
       type: String,
     },
   },

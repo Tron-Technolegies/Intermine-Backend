@@ -84,16 +84,6 @@ export const getAllIssues = async (req, res) => {
     if (status && status !== "ALL") {
       matchStage.status = status;
     }
-    if (query && query.trim() !== "") {
-      const searchRegex = new RegExp(query, "i");
-      matchStage.$or = [
-        { "user.clientName": searchRegex },
-        { "user.clientId": searchRegex },
-        { "miner.model": searchRegex },
-        { "miner.workerId": searchRegex },
-        { "issue.issueType": searchRegex },
-      ];
-    }
     const pipeline = [
       { $match: matchStage },
       {
@@ -149,13 +139,29 @@ export const getAllIssues = async (req, res) => {
           preserveNullAndEmptyArrays: true,
         },
       },
+    ];
+    if (query && query.trim() !== "") {
+      const searchRegex = new RegExp(query, "i");
+      pipeline.push({
+        $match: {
+          $or: [
+            { "user.clientName": searchRegex },
+            { "user.clientId": searchRegex },
+            { "miner.model": searchRegex },
+            { "miner.workerId": searchRegex },
+            { "issue.issueType": searchRegex },
+          ],
+        },
+      });
+    }
+    pipeline.push(
       { $sort: { createdAt: -1 } },
       { $skip: skip },
-      { $limit: limit },
-    ];
+      { $limit: limit }
+    );
     const issues = await Issue.aggregate(pipeline);
     if (issues.length < 1) throw new NotFoundError("No issues found");
-    const countPipeline = [...pipeline.slice(0, -2), { $count: "total" }];
+    const countPipeline = [...pipeline.slice(0, -3), { $count: "total" }];
     const countResult = await Issue.aggregate(countPipeline);
     const totalIssues = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalIssues / limit);

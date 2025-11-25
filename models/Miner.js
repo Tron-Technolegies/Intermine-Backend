@@ -12,10 +12,12 @@ const MinerSchema = new Schema(
     workerId: {
       type: String,
       required: true,
+      unique: true,
     },
     serialNumber: {
       type: String,
       required: true,
+      unique: true,
     },
     model: {
       type: String,
@@ -65,6 +67,7 @@ const MinerSchema = new Schema(
     },
     macAddress: {
       type: String,
+      unique: true,
     },
   },
   { timestamps: true }

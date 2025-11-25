@@ -50,3 +50,20 @@ export const getSingleClient = async (req, res) => {
       .json({ error: error.msg || error.message });
   }
 };
+
+//add note for client
+
+export const addClientNote = async (req, res) => {
+  try {
+    const { note, user } = req.body;
+    const client = await User.findById(user);
+    if (!client) throw new NotFoundError("No user found");
+    client.internalNote.push(note);
+    await client.save();
+    res.status(200).json({ message: "Note added successfully", client });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
