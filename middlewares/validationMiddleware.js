@@ -227,3 +227,15 @@ export const validateUpdateMiningFarm = withValidationErrors([
   body("capacity").notEmpty().withMessage("Capacity is required"),
   body("farmId").notEmpty().withMessage("Farm Id is required"),
 ]);
+
+//Warranty Validation
+export const validateUpdateWarranty = withValidationErrors([
+  body("type").notEmpty().withMessage("Warranty type is required"),
+  body("startDate").notEmpty().withMessage("Start Date is required"),
+  body("endDate").notEmpty().withMessage("End Date is required"),
+  body("warrantyId")
+    .notEmpty()
+    .withMessage("Warranty Id is required")
+    .isMongoId()
+    .withMessage("Invalid Warranty Id"),
+]);

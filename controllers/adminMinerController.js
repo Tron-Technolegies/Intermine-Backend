@@ -3,10 +3,14 @@ import Miner from "../models/Miner.js";
 import User from "../models/User.js";
 import Issue from "../models/Issue.js";
 import MiningFarm from "../models/MiningFarm.js";
+import Warranty from "../models/Warranty.js";
+import mongoose from "mongoose";
 
 //Add a new Miner by Admin
 export const addNewMiner = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
     const {
       client,
       workerId,
@@ -15,6 +19,7 @@ export const addNewMiner = async (req, res) => {
       status,
       location,
       warranty,
+      warrantyType,
       poolAddress,
       connectionDate,
       serviceProvider,
@@ -22,14 +27,15 @@ export const addNewMiner = async (req, res) => {
       power,
       macAddress,
     } = req.body;
-    const clientUser = await User.findById(client);
+    const clientUser = await User.findById(client).session(session);
     if (!clientUser) throw new NotFoundError("No client Found");
-    const miningFarm = await MiningFarm.findById(location);
+    const miningFarm = await MiningFarm.findById(location).session(session);
     if (!miningFarm) throw new NotFoundError("No mining Farm found");
     const newTotal = miningFarm.current + Number(power);
     if (miningFarm.capacity < newTotal)
       throw new BadRequestError("Mining Farm maximum capacity reached");
-    const miner = await Miner.create({
+    if (!warrantyType) throw new BadRequestError("Warranty type is required");
+    const miner = new Miner({
       client: client,
       clientName: clientUser.clientName,
       workerId: workerId,
@@ -47,10 +53,31 @@ export const addNewMiner = async (req, res) => {
     });
     clientUser.owned.push(miner._id);
     miningFarm.current = miningFarm.current + Number(power);
-    await clientUser.save();
-    await miningFarm.save();
+
+    const start = new Date(connectionDate);
+    const end = new Date(start);
+    end.setFullYear(start.getFullYear() + Number(warranty));
+
+    const newWarranty = new Warranty({
+      warrantyType: warrantyType,
+      startDate: start,
+      endDate: end,
+      user: client,
+      miner: miner._id,
+      status: "active",
+    });
+
+    miner.relatedWarranty = newWarranty._id;
+    await miner.save({ session });
+    await newWarranty.save({ session });
+    await clientUser.save({ session });
+    await miningFarm.save({ session });
+    await session.commitTransaction();
+    session.endSession();
     res.status(200).json({ message: "New Miner Added", miner });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     res
       .status(error.statusCode || 500)
       .json({ error: error.msg || error.message });
@@ -102,6 +129,10 @@ export const getOfflineMiners = async (req, res) => {
     const limit = 15;
     const skip = (page - 1) * limit;
     const matchStage = { status: "offline" };
+    let searchRegex = null;
+    if (query && query.trim() !== "") {
+      searchRegex = new RegExp(query, "i");
+    }
     const pipeline = [
       { $match: matchStage },
       {
@@ -115,7 +146,12 @@ export const getOfflineMiners = async (req, res) => {
           as: "client",
         },
       },
-      { $unwind: "$client" },
+      {
+        $unwind: {
+          path: "$client",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
       {
         $lookup: {
           from: "issues",
@@ -133,7 +169,12 @@ export const getOfflineMiners = async (req, res) => {
                 as: "issue",
               },
             },
-            { $unwind: "$issue" },
+            {
+              $unwind: {
+                path: "$issue",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
             {
               $lookup: {
                 from: "messages",
@@ -154,8 +195,7 @@ export const getOfflineMiners = async (req, res) => {
         },
       },
     ];
-    if (query && query.trim() !== "") {
-      const searchRegex = new RegExp(query, "i");
+    if (searchRegex) {
       pipeline.push({
         $match: {
           $or: [
@@ -172,8 +212,83 @@ export const getOfflineMiners = async (req, res) => {
       { $limit: limit }
     );
     const miners = await Miner.aggregate(pipeline);
-    if (miners.length < 1) throw new NotFoundError("No miners found");
-    const countPipeline = [...pipeline.slice(0, -3), { $count: "total" }];
+
+    const countPipeline = [
+      { $match: matchStage },
+      ...(searchRegex
+        ? [
+            {
+              $lookup: {
+                from: "users",
+                let: { clientId: "$client" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$clientId"] } } },
+                  { $project: { clientId: 1, clientName: 1 } },
+                ],
+                as: "client",
+              },
+            },
+            {
+              $unwind: {
+                path: "$client",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $lookup: {
+                from: "issues",
+                let: { currentIssueId: "$currentIssue" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$currentIssueId"] } } },
+                  {
+                    $lookup: {
+                      from: "issuetypes",
+                      let: { typeId: "$issue" },
+                      pipeline: [
+                        { $match: { $expr: { $eq: ["$_id", "$$typeId"] } } },
+                        { $project: { issueType: 1 } },
+                      ],
+                      as: "issue",
+                    },
+                  },
+                  {
+                    $unwind: {
+                      path: "$issue",
+                      preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: "messages",
+                      localField: "messages",
+                      foreignField: "_id",
+                      as: "messages",
+                    },
+                  },
+                  { $project: { issue: 1, status: 1, messages: 1 } },
+                ],
+                as: "currentIssue",
+              },
+            },
+            {
+              $unwind: {
+                path: "$currentIssue",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $match: {
+                $or: [
+                  { "client.clientName": searchRegex },
+                  { "client.clientId": searchRegex },
+                  { "currentIssue.issue.issueType": searchRegex },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
     const countResult = await Miner.aggregate(countPipeline);
     const totalMiners = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalMiners / limit);
@@ -200,7 +315,9 @@ export const getASingleMiner = async (req, res) => {
 
 //Edit a new Miner
 export const editMiner = async (req, res) => {
+  const session = await mongoose.startSession();
   try {
+    session.startTransaction();
     const {
       client,
       workerId,
@@ -216,13 +333,13 @@ export const editMiner = async (req, res) => {
       power,
       macAddress,
     } = req.body;
-    const clientUser = await User.findById(client);
+    const clientUser = await User.findById(client).session(session);
     if (!clientUser) throw new NotFoundError("No client user found");
 
-    const miner = await Miner.findById(req.params.id);
+    const miner = await Miner.findById(req.params.id).session(session);
     if (!miner) throw new NotFoundError("No miner found");
 
-    const newFarm = await MiningFarm.findById(location);
+    const newFarm = await MiningFarm.findById(location).session(session);
     if (!newFarm) throw new NotFoundError("Mining Farm not found");
 
     const oldPower = miner.power;
@@ -231,7 +348,9 @@ export const editMiner = async (req, res) => {
 
     let oldFarm = null;
     if (oldFarmName !== newFarm.farm) {
-      oldFarm = await MiningFarm.findOne({ farm: oldFarmName });
+      oldFarm = await MiningFarm.findOne({ farm: oldFarmName }).session(
+        session
+      );
       if (!oldFarm) throw new NotFoundError("Old mining farm not found");
     }
 
@@ -248,20 +367,20 @@ export const editMiner = async (req, res) => {
     if (oldFarmName !== newFarm.farm) {
       oldFarm.current -= oldPower;
       newFarm.current += newPower;
-      await oldFarm.save();
-      await newFarm.save();
+      await oldFarm.save({ session });
+      await newFarm.save({ session });
     } else if (oldPower !== newPower) {
       newFarm.current = newFarm.current - oldPower + newPower;
-      await newFarm.save();
+      await newFarm.save({ session });
     }
 
     if (miner.client.toString() !== clientUser._id.toString()) {
-      const oldClient = await User.findById(miner.client);
+      const oldClient = await User.findById(miner.client).session(session);
       if (oldClient) {
         oldClient.owned = oldClient.owned.filter(
           (id) => id.toString() !== miner._id.toString()
         );
-        await oldClient.save();
+        await oldClient.save({ session });
       }
       if (!clientUser.owned.includes(miner._id)) {
         clientUser.owned.push(miner._id);
@@ -283,11 +402,14 @@ export const editMiner = async (req, res) => {
     miner.power = newPower;
     miner.macAddress = macAddress;
 
-    await miner.save();
-    await clientUser.save();
-
+    await miner.save({ session });
+    await clientUser.save({ session });
+    await session.commitTransaction();
+    session.endSession();
     res.status(200).json({ message: "successs", miner });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     res
       .status(error.statusCode || 500)
       .json({ error: error.msg || error.message });
@@ -322,9 +444,19 @@ export const getAllMinersbyLocation = async (req, res) => {
       .skip(skip)
       .limit(limit);
     if (miners.length < 1) throw new NotFoundError("No miners found");
+    let farm;
+    if (location && location !== "ALL") {
+      farm = await MiningFarm.findOne({ farm: location });
+      if (!farm) throw new NotFoundError("No farm found");
+    }
     const totalMiners = await Miner.countDocuments(queryObject);
     const totalPages = Math.ceil(totalMiners / limit);
-    res.status(200).json({ miners, totalPages });
+    res.status(200).json({
+      miners,
+      totalPages,
+      totalCapacity: farm?.capacity || null,
+      currentCapacity: farm?.current || null,
+    });
   } catch (error) {
     res
       .status(error.statusCode || 500)

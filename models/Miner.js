@@ -33,6 +33,10 @@ const MinerSchema = new Schema(
     warranty: {
       type: Number,
     },
+    relatedWarranty: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Warranty",
+    },
     poolAddress: {
       type: String,
       required: true,

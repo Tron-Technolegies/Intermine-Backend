@@ -17,6 +17,10 @@ export const getAllUserAgreements = async (req, res) => {
     if (status && status !== "ALL") {
       matchStage.signed = status === "signed" ? true : false;
     }
+    let searchRegex = null;
+    if (query && query.trim() !== "") {
+      searchRegex = new RegExp(query, "i");
+    }
     const pipeline = [
       { $match: matchStage },
       {
@@ -30,10 +34,9 @@ export const getAllUserAgreements = async (req, res) => {
           as: "user",
         },
       },
-      { $unwind: "$user" },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
     ];
     if (query && query.trim() !== "") {
-      const searchRegex = new RegExp(query, "i");
       pipeline.push({
         $match: {
           $or: [
@@ -50,7 +53,34 @@ export const getAllUserAgreements = async (req, res) => {
     );
     const agreements = await Agreement.aggregate(pipeline);
     if (agreements.length < 1) throw new NotFoundError("No agreements found");
-    const countPipeline = [...pipeline.slice(0, -3), { $count: "total" }];
+    const countPipeline = [
+      { $match: matchStage },
+      ...(query && query.trim() !== ""
+        ? [
+            {
+              $lookup: {
+                from: "users",
+                let: { userId: "$user" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+                  { $project: { clientId: 1, clientName: 1 } },
+                ],
+                as: "user",
+              },
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+            {
+              $match: {
+                $or: [
+                  { "user.clientName": searchRegex },
+                  { "user.clientId": searchRegex },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
     const countedResult = await Agreement.aggregate(countPipeline);
     const totalAgreements = countedResult[0]?.total || 0;
     const totalPages = Math.ceil(totalAgreements / limit);

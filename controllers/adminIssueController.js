@@ -84,6 +84,10 @@ export const getAllIssues = async (req, res) => {
     if (status && status !== "ALL") {
       matchStage.status = status;
     }
+    let searchRegex = null;
+    if (query && query.trim() !== "") {
+      searchRegex = new RegExp(query, "i");
+    }
     const pipeline = [
       { $match: matchStage },
       {
@@ -99,7 +103,7 @@ export const getAllIssues = async (req, res) => {
           as: "user",
         },
       },
-      { $unwind: "$user" },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: "miners",
@@ -120,7 +124,7 @@ export const getAllIssues = async (req, res) => {
         },
       },
       {
-        $unwind: "$miner",
+        $unwind: { path: "$miner", preserveNullAndEmptyArrays: true },
       },
       {
         $lookup: {
@@ -140,8 +144,7 @@ export const getAllIssues = async (req, res) => {
         },
       },
     ];
-    if (query && query.trim() !== "") {
-      const searchRegex = new RegExp(query, "i");
+    if (searchRegex) {
       pipeline.push({
         $match: {
           $or: [
@@ -160,8 +163,79 @@ export const getAllIssues = async (req, res) => {
       { $limit: limit }
     );
     const issues = await Issue.aggregate(pipeline);
-    if (issues.length < 1) throw new NotFoundError("No issues found");
-    const countPipeline = [...pipeline.slice(0, -3), { $count: "total" }];
+
+    const countPipeline = [
+      { $match: matchStage },
+      ...(searchRegex
+        ? [
+            {
+              $lookup: {
+                from: "users",
+                let: { userId: "$user" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+                  {
+                    $project: { clientName: 1, clientId: 1 },
+                  },
+                ],
+                as: "user",
+              },
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+            {
+              $lookup: {
+                from: "miners",
+                let: { minerId: "$miner" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$minerId"] } } },
+                  {
+                    $project: {
+                      model: 1,
+                      status: 1,
+                      serviceProvider: 1,
+                      poolAddress: 1,
+                      workerId: 1,
+                    },
+                  },
+                ],
+                as: "miner",
+              },
+            },
+            {
+              $unwind: { path: "$miner", preserveNullAndEmptyArrays: true },
+            },
+            {
+              $lookup: {
+                from: "issuetypes",
+                let: { issueId: "$issue" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$issueId"] } } },
+                  { $project: { issueType: 1 } },
+                ],
+                as: "issue",
+              },
+            },
+            {
+              $unwind: {
+                path: "$issue",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            {
+              $match: {
+                $or: [
+                  { "user.clientName": searchRegex },
+                  { "user.clientId": searchRegex },
+                  { "miner.model": searchRegex },
+                  { "miner.workerId": searchRegex },
+                  { "issue.issueType": searchRegex },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
     const countResult = await Issue.aggregate(countPipeline);
     const totalIssues = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalIssues / limit);

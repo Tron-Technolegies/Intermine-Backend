@@ -73,7 +73,10 @@ export const getAllAdminNotification = async (req, res) => {
     if (status && status !== "ALL") {
       matchStage.status = status;
     }
-
+    let searchRegex = null;
+    if (query && query.trim() !== "") {
+      searchRegex = new RegExp(query, "i");
+    }
     const pipeline = [
       { $match: matchStage },
       {
@@ -87,7 +90,7 @@ export const getAllAdminNotification = async (req, res) => {
           as: "client",
         },
       },
-      { $unwind: "$client" },
+      { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: "miners",
@@ -106,10 +109,9 @@ export const getAllAdminNotification = async (req, res) => {
           as: "miner",
         },
       },
-      { $unwind: "$miner" },
+      { $unwind: { path: "$miner", preserveNullAndEmptyArrays: true } },
     ];
     if (query && query.trim() !== "") {
-      const searchRegex = new RegExp(query, "i");
       pipeline.push({
         $match: {
           $or: [
@@ -127,9 +129,55 @@ export const getAllAdminNotification = async (req, res) => {
       { $limit: limit }
     );
     const notifications = await Notification.aggregate(pipeline);
-    if (notifications.length < 1)
-      throw new NotFoundError("No notifications found");
-    const countPipeLine = [...pipeline.slice(0, -3), { $count: "total" }];
+    const countPipeLine = [
+      { $match: matchStage },
+      ...(query && query.trim() !== ""
+        ? [
+            {
+              $lookup: {
+                from: "users",
+                let: { clientId: "$client" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$clientId"] } } },
+                  { $project: { clientName: 1, clientId: 1 } },
+                ],
+                as: "client",
+              },
+            },
+            { $unwind: "$client" },
+            {
+              $lookup: {
+                from: "miners",
+                let: { minerId: "$miner" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$_id", "$$minerId"] } } },
+                  {
+                    $project: {
+                      model: 1,
+                      workerId: 1,
+                      location: 1,
+                      serviceProvider: 1,
+                    },
+                  },
+                ],
+                as: "miner",
+              },
+            },
+            { $unwind: "$miner" },
+            {
+              $match: {
+                $or: [
+                  { problem: searchRegex },
+                  { "client.clientName": searchRegex },
+                  { "miner.model": searchRegex },
+                  { "miner.workerId": searchRegex },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
     const countResult = await Notification.aggregate(countPipeLine);
     const totalNotifications = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalNotifications / limit);

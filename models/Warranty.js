@@ -5,6 +5,7 @@ const WarrantySchema = new Schema(
     warrantyType: {
       type: String,
       required: true,
+      enum: ["Manufacturer", "Intermine"],
     },
     startDate: {
       type: Date,
