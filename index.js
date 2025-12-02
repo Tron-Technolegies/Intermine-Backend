@@ -4,6 +4,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import morgan from "morgan";
+import cors from "cors";
 import errorHandleMiddleware from "./middlewares/errorHandlingMiddleware.js";
 
 import authRouter from "./routers/authRouter.js";
@@ -28,6 +29,25 @@ app.use(cookieParser());
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("tiny"));
 }
+
+const allowedOrigins = ["http://localhost:5173", "http://localhost:4000"];
+
+app.use(
+  cors({
+    credentials: true,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Ensure all necessary methods are allowed
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  })
+);
+app.options("/*path", cors());
 
 app.get("/", (req, res) => {
   res.send("<h1>Welcome to Intermine Server</h1>");

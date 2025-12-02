@@ -5,6 +5,8 @@ import Issue from "../models/Issue.js";
 import MiningFarm from "../models/MiningFarm.js";
 import Warranty from "../models/Warranty.js";
 import mongoose from "mongoose";
+import axios from "axios";
+import { DAHAB_URL } from "../utils/urls.js";
 
 //Add a new Miner by Admin
 export const addNewMiner = async (req, res) => {
@@ -72,9 +74,42 @@ export const addNewMiner = async (req, res) => {
     await newWarranty.save({ session });
     await clientUser.save({ session });
     await miningFarm.save({ session });
+    let dahab = null;
+    if (serviceProvider.toLowerCase() === "dahab") {
+      try {
+        const response = await axios.post(
+          `${DAHAB_URL}/addMiner`,
+          {
+            client: "INTERMINE",
+            nowRunning: clientUser.clientName,
+            location: miningFarm.farm,
+            model,
+            serialNumber,
+            mac: macAddress,
+            worker: workerId,
+          },
+          {
+            headers: {
+              "x-api-key": process.env.DAHAB_API_KEY,
+            },
+          }
+        );
+        dahab = response.data;
+      } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+
+        return res.status(err.response?.status || 500).json({
+          error: err.response?.data?.msg || err.response?.data || err.message,
+        });
+      }
+    }
     await session.commitTransaction();
     session.endSession();
-    res.status(200).json({ message: "New Miner Added", miner });
+
+    res
+      .status(200)
+      .json({ message: "New Miner Added", miner, dahab: dahab?.msg || "" });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -106,7 +141,7 @@ export const getAllMiners = async (req, res) => {
     //need to add populating of issueHistory later
     const miners = await Miner.find(queryObject)
       .populate("client", "clientName clientId")
-      .populate("issueHistory")
+      .populate("issueHistory.issue")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -328,7 +363,6 @@ export const editMiner = async (req, res) => {
       warranty,
       poolAddress,
       connectionDate,
-      serviceProvider,
       hashRate,
       power,
       macAddress,
@@ -389,6 +423,35 @@ export const editMiner = async (req, res) => {
       miner.clientName = clientUser.clientName;
     }
 
+    if (miner.serviceProvider.toLowerCase() === "dahab") {
+      try {
+        await axios.patch(
+          `${DAHAB_URL}/editMiner`,
+          {
+            client: "INTERMINE",
+            nowRunning: clientUser.clientName,
+            location: newFarm.farm,
+            model,
+            serialNumber,
+            mac: macAddress,
+            worker: workerId,
+          },
+          {
+            headers: {
+              "x-api-key": process.env.DAHAB_API_KEY,
+            },
+          }
+        );
+      } catch (err) {
+        await session.abortTransaction();
+        session.endSession();
+
+        return res.status(err.response?.status || 500).json({
+          error: err.response?.data?.msg || err.response?.data || err.message,
+        });
+      }
+    }
+
     miner.workerId = workerId;
     miner.serialNumber = serialNumber;
     miner.model = model;
@@ -397,13 +460,13 @@ export const editMiner = async (req, res) => {
     miner.warranty = warranty;
     miner.poolAddress = poolAddress;
     miner.connectionDate = new Date(connectionDate);
-    miner.serviceProvider = serviceProvider;
     miner.hashRate = hashRate;
     miner.power = newPower;
     miner.macAddress = macAddress;
 
     await miner.save({ session });
     await clientUser.save({ session });
+
     await session.commitTransaction();
     session.endSession();
     res.status(200).json({ message: "successs", miner });

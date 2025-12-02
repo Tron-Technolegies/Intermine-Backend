@@ -8,6 +8,8 @@ import Issue from "../models/Issue.js";
 import IssueType from "../models/IssueType.js";
 import Miner from "../models/Miner.js";
 import Notification from "../models/Notification.js";
+import axios from "axios";
+import { DAHAB_URL } from "../utils/urls.js";
 
 //get all issueTypes for dropdown
 export const getAllIssueTypes = async (req, res) => {
@@ -56,6 +58,26 @@ export const addIssueByClient = async (req, res) => {
       status: "unread",
       isForAdmin: true,
     });
+    if (targetMiner.serviceProvider.toLowerCase() === "dahab") {
+      try {
+        await axios.patch(
+          `${DAHAB_URL}/report-issue`,
+          {
+            model: targetMiner.model,
+            serialNumber: targetMiner.serialNumber,
+            issue: targetIssue.issueType,
+            description,
+          },
+          {
+            headers: {
+              "x-api-key": process.env.DAHAB_API_KEY,
+            },
+          }
+        );
+      } catch (err) {
+        console.error("Dahab API Error:", err.response?.data || err.message);
+      }
+    }
     res.status(201).json({ message: "issue Added", newIssue, newNotification });
   } catch (error) {
     res
