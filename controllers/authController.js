@@ -142,3 +142,37 @@ export const logout = async (req, res) => {
       .json({ error: error.msg || error.message });
   }
 };
+
+//update Admin settings
+export const updateAdmninSettings = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) throw new NotFoundError("No user found");
+    const { companyName, companyAddress, email } = req.body;
+    if (email && email !== "") {
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (
+        existingUser &&
+        existingUser._id.toString() !== req.user.userId.toString()
+      )
+        throw new BadRequestError("email already exists");
+    }
+
+    if (companyName && companyName !== "") {
+      user.companyName = companyName;
+    }
+    if (companyAddress && companyAddress !== "") {
+      user.address = { ...(user.address || {}), street: companyAddress };
+    }
+    if (email && email !== "") {
+      user.email = email.toLowerCase();
+    }
+
+    await user.save();
+    res.status(200).json({ message: "updated" });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};

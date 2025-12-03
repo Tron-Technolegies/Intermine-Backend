@@ -135,6 +135,15 @@ export const validateAddIssueType = withValidationErrors([
   body("issueType").notEmpty().withMessage("Issue Type is required"),
 ]);
 
+export const validateEditIssueType = withValidationErrors([
+  body("issueType").notEmpty().withMessage("Issue Type is required"),
+  body("id")
+    .notEmpty()
+    .withMessage("Id is required")
+    .isMongoId()
+    .withMessage("Invalid Id"),
+]);
+
 export const validateAddIssue = withValidationErrors([
   body("issue")
     .notEmpty()
@@ -185,6 +194,29 @@ export const validatePoolChangeRequest = withValidationErrors([
 
 export const validateStatusChange = withValidationErrors([
   body("status").notEmpty().withMessage("Status is required"),
+]);
+
+export const validateDahabReminder = withValidationErrors([
+  body("issue").notEmpty().withMessage("Issue is required"),
+  body("issueId")
+    .notEmpty()
+    .withMessage("Issue Id is required")
+    .isMongoId()
+    .withMessage("Issue Id must be in MongoId"),
+  body("model").notEmpty().withMessage("Model is required"),
+  body("serialNumber").notEmpty().withMessage("Serial Number is required"),
+  body("serviceProvider")
+    .notEmpty()
+    .withMessage("Service provider is required"),
+]);
+
+export const validateSendResponse = withValidationErrors([
+  body("message").notEmpty().withMessage("Message is required"),
+  body("issueId")
+    .notEmpty()
+    .withMessage("Issue Id is required")
+    .isMongoId()
+    .withMessage("Issue Id needs to be MoongoId"),
 ]);
 
 //ADMIN CLIENT VALIDATION

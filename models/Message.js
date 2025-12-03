@@ -23,6 +23,9 @@ const MessageSchema = new Schema(
     sendOn: {
       type: Date,
     },
+    sendBy: {
+      type: String,
+    },
   },
   { timestamps: true }
 );

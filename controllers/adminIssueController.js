@@ -5,6 +5,7 @@ import IssueType from "../models/IssueType.js";
 import Miner from "../models/Miner.js";
 import Notification from "../models/Notification.js";
 import { DAHAB_URL } from "../utils/urls.js";
+import Message from "../models/Message.js";
 
 //Add a new Issue Type
 export const addIssueType = async (req, res) => {
@@ -27,6 +28,24 @@ export const getAllIssueTypes = async (req, res) => {
     const issueTypes = await IssueType.find();
     if (issueTypes.length < 1) throw new NotFoundError("No issue Types found");
     res.status(200).json(issueTypes);
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//edit an issue type
+export const editIssueType = async (req, res) => {
+  try {
+    const { id, issueType } = req.body;
+    const issue = await IssueType.findByIdAndUpdate(
+      id,
+      { issueType },
+      { new: true }
+    );
+    if (!issue) throw new NotFoundError("No issue Type found");
+    res.status(200).json({ message: "updated", issue });
   } catch (error) {
     res
       .status(error.statusCode || 500)
@@ -75,6 +94,7 @@ export const addNewIssue = async (req, res) => {
             model: targetMiner.model,
             serialNumber: targetMiner.serialNumber,
             issue: targetIssue.issueType,
+            issueId: targetIssue._id,
           },
           {
             headers: {
@@ -137,6 +157,7 @@ export const getAllIssues = async (req, res) => {
                 status: 1,
                 serviceProvider: 1,
                 poolAddress: 1,
+                serialNumber: 1,
                 workerId: 1,
               },
             },
@@ -307,6 +328,87 @@ export const updateIssueStatus = async (req, res) => {
       return res.status(200).json({ message: "success", notification, issue });
     }
     throw new BadRequestError("Invalid Status Type");
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//send Reminder to Dahab
+export const sendReminderToDahab = async (req, res) => {
+  try {
+    const { issue, model, serialNumber, serviceProvider, issueId } = req.body;
+    const currentIssue = await Issue.findById(issueId);
+    if (!currentIssue) throw new NotFoundError("No issue found");
+    if (serviceProvider.toLowerCase() === "dahab") {
+      try {
+        await axios.patch(
+          `${DAHAB_URL}/reminder`,
+          { issue, model, serialNumber, issueId },
+          {
+            headers: {
+              "x-api-key": process.env.DAHAB_API_KEY,
+            },
+          }
+        );
+      } catch (err) {
+        console.error("Dahab API Error:", err.response?.data || err.message);
+      }
+      return res.status(200).json({ message: "Dahab Reminded successfully" });
+    } else {
+      throw new BadRequestError("Invalid Service provider");
+    }
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//send a response to a client
+export const sendResponseToClient = async (req, res) => {
+  try {
+    const { message, issueId } = req.body;
+    const issue = await Issue.findById(issueId).populate(
+      "miner",
+      "model serialNumber workerId"
+    );
+    if (!issue) throw new NotFoundError("No issue has been found");
+    const newMessage = await Message.create({
+      message: message,
+      client: issue.user,
+      miner: issue.miner,
+      issue: issue._id,
+      serviceProvider: issue.serviceProvider,
+      sendOn: new Date(),
+      sendBy: "Admin",
+    });
+    issue.messages.push(newMessage._id);
+    const notification = await Notification.create({
+      problem: `A new Message from Admin for an Issue Reported for miner ${issue.miner.model} with worker Id ${issue.miner.workerId}`,
+      client: issue.user,
+      miner: issue.miner,
+      status: "unread",
+    });
+    await issue.save();
+    res.status(200).json({ message: "message sent successfully" });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//Get all Chat for a specific Issue
+export const getIssueMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const messages = await Message.find({ issue: id })
+      .sort({ createdAt: 1 })
+      .select("message sendOn sendBy")
+      .lean();
+    res.status(200).json(messages);
   } catch (error) {
     res
       .status(error.statusCode || 500)

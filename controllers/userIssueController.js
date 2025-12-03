@@ -10,6 +10,7 @@ import Miner from "../models/Miner.js";
 import Notification from "../models/Notification.js";
 import axios from "axios";
 import { DAHAB_URL } from "../utils/urls.js";
+import Message from "../models/Message.js";
 
 //get all issueTypes for dropdown
 export const getAllIssueTypes = async (req, res) => {
@@ -67,6 +68,7 @@ export const addIssueByClient = async (req, res) => {
             serialNumber: targetMiner.serialNumber,
             issue: targetIssue.issueType,
             description,
+            issueId: targetIssue._id,
           },
           {
             headers: {
@@ -185,6 +187,28 @@ export const requestPoolChange = async (req, res) => {
       newNotification,
       newIssue,
     });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
+
+//get Issue Related Messages
+export const getIssueMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const issue = await Issue.findById(id).select("user").lean();
+    if (!issue) throw new NotFoundError("No issue found");
+    if (issue.user.toString() !== req.user.userId.toString())
+      throw new UnauthorizedError(
+        "Not authorized to view this issues chat history"
+      );
+    const messages = await Message.find({ issue: id })
+      .sort({ createdAt: 1 })
+      .select("message sendOn sendBy")
+      .lean();
+    res.status(200).json(messages);
   } catch (error) {
     res
       .status(error.statusCode || 500)
