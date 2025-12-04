@@ -18,6 +18,8 @@ import notificationRouter from "./routers/notificationRouter.js";
 import agreementRouter from "./routers/agreementRouter.js";
 import miningFarmRouter from "./routers/miningFarmRouter.js";
 import warrantyRouter from "./routers/warrantyRouter.js";
+import dropdownRouter from "./routers/dropdownRouter.js";
+import adminRouter from "./routers/adminRouter.js";
 import { authenticateUser, isAdmin } from "./middlewares/authMiddleWare.js";
 
 const app = express();
@@ -64,7 +66,8 @@ app.use("/api/v1/notification", authenticateUser, notificationRouter);
 app.use("/api/v1/agreement", authenticateUser, agreementRouter);
 app.use("/api/v1/mining-farms", authenticateUser, isAdmin, miningFarmRouter);
 app.use("/api/v1/warranty", authenticateUser, isAdmin, warrantyRouter);
-
+app.use("/api/v1/dropdown", authenticateUser, dropdownRouter);
+app.use("/api/v1/admin/extra", authenticateUser, isAdmin, adminRouter);
 app.use("/*path", (req, res) => {
   res.status(404).json({ message: "Not Found in Server" });
 });

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getAgreementStats,
   getAllUserAgreements,
   getUserAgreement,
   sendAgreementToUser,
@@ -17,5 +18,6 @@ router.get("/", isAdmin, getAllUserAgreements);
 router.post("/send", isAdmin, validateSendAgreement, sendAgreementToUser);
 router.get("/user", getUserAgreement);
 router.patch("/sign", validateSignAgreement, signTheAgreement);
+router.get("/stats", isAdmin, getAgreementStats);
 
 export default router;

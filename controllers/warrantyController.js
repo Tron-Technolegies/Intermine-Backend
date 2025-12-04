@@ -153,3 +153,23 @@ export const updateWarranty = async (req, res) => {
       .json({ error: error.msg || error.message });
   }
 };
+
+//get All warranty stats
+export const getWarrantyStats = async (req, res) => {
+  try {
+    const warranties = await Warranty.countDocuments();
+    const today = new Date();
+    const oneMonthLater = new Date(today);
+    oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+    const active = await Warranty.countDocuments({ endDate: { $gte: today } });
+    const expired = warranties - active;
+    const expireSoon = await Warranty.countDocuments({
+      endDate: { $gte: today, $lte: oneMonthLater },
+    });
+    res.status(200).json({ warranties, active, expired, expireSoon });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};

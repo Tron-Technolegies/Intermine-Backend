@@ -170,3 +170,23 @@ export const signTheAgreement = async (req, res) => {
       .json({ error: error.msg || error.message });
   }
 };
+
+//get agreement stats for admin
+export const getAgreementStats = async (req, res) => {
+  try {
+    const agreements = await Agreement.countDocuments();
+    const signed = await Agreement.countDocuments({ signed: true });
+    const pending = agreements - signed;
+    const ratio = agreements === 0 ? 0 : (signed / agreements) * 100;
+    res.status(200).json({
+      total: agreements,
+      signed: signed,
+      pending,
+      ratio,
+    });
+  } catch (error) {
+    res
+      .status(error.statusCode || 500)
+      .json({ error: error.msg || error.message });
+  }
+};
