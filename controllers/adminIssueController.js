@@ -295,8 +295,15 @@ export const updateIssueStatus = async (req, res) => {
     const { status } = req.body;
     const issue = await Issue.findById(req.params.id).populate("issue");
     if (!issue) throw new NotFoundError("No issue found");
+    if (issue.status === "Resolved")
+      throw new BadRequestError("Issue Already Resolved");
     if (status === "Warranty") {
       issue.status = "Warranty";
+      await issue.save();
+      return res.status(200).json({ message: "Status changed", issue });
+    }
+    if (status === "Pending") {
+      issue.status = "Pending";
       await issue.save();
       return res.status(200).json({ message: "Status changed", issue });
     }
