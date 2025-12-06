@@ -271,3 +271,12 @@ export const validateUpdateWarranty = withValidationErrors([
     .isMongoId()
     .withMessage("Invalid Warranty Id"),
 ]);
+
+//SERVICE PROVIDER
+export const validateRecieveMessage = withValidationErrors([
+  body("issueId").notEmpty().withMessage("Issue ID is required"),
+  body("message").notEmpty().withMessage("message is required"),
+  body("serviceProvider")
+    .notEmpty()
+    .withMessage("Service Provider is required"),
+]);

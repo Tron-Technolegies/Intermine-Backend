@@ -94,7 +94,9 @@ export const addNewIssue = async (req, res) => {
             model: targetMiner.model,
             serialNumber: targetMiner.serialNumber,
             issue: targetIssue.issueType,
-            issueId: targetIssue._id,
+            issueId: newIssue._id,
+            clientName: targetMiner.clientName,
+            type: "INTERMINE",
           },
           {
             headers: {

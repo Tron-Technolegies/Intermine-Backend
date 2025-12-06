@@ -20,7 +20,13 @@ import miningFarmRouter from "./routers/miningFarmRouter.js";
 import warrantyRouter from "./routers/warrantyRouter.js";
 import dropdownRouter from "./routers/dropdownRouter.js";
 import adminRouter from "./routers/adminRouter.js";
-import { authenticateUser, isAdmin } from "./middlewares/authMiddleWare.js";
+import messageRouter from "./routers/messageRouter.js";
+import serviceProviderRouter from "./routers/serviceProviderRouter.js";
+import {
+  authenticateUser,
+  isAdmin,
+  isDahab,
+} from "./middlewares/authMiddleWare.js";
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -68,6 +74,8 @@ app.use("/api/v1/mining-farms", authenticateUser, isAdmin, miningFarmRouter);
 app.use("/api/v1/warranty", authenticateUser, isAdmin, warrantyRouter);
 app.use("/api/v1/dropdown", authenticateUser, dropdownRouter);
 app.use("/api/v1/admin/extra", authenticateUser, isAdmin, adminRouter);
+app.use("/api/v1/messages", authenticateUser, messageRouter);
+app.use("/api/v1/service-provider", isDahab, serviceProviderRouter);
 app.use("/*path", (req, res) => {
   res.status(404).json({ message: "Not Found in Server" });
 });

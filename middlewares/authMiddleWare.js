@@ -1,4 +1,5 @@
 import {
+  BadRequestError,
   UnauthenticatedError,
   UnauthorizedError,
 } from "../errors/customErrors.js";
@@ -24,5 +25,18 @@ export const isAdmin = async (req, res, next) => {
     next();
   } catch (error) {
     next(error);
+  }
+};
+
+export const isDahab = async (req, res, next) => {
+  try {
+    const apiKey = req.headers["x-api-key"];
+    if (!apiKey) throw new UnauthenticatedError("Missing API Key");
+    if (apiKey !== process.env.DAHAB_ALLOW_API_KEY)
+      throw new BadRequestError("Invalid API Key");
+    next();
+  } catch (error) {
+    console.log(error);
+    throw new UnauthenticatedError("invalid authorization");
   }
 };

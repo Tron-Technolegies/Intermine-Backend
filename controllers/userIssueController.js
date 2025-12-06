@@ -68,7 +68,9 @@ export const addIssueByClient = async (req, res) => {
             serialNumber: targetMiner.serialNumber,
             issue: targetIssue.issueType,
             description,
-            issueId: targetIssue._id,
+            issueId: newIssue._id,
+            clientName: targetMiner.clientName,
+            type: "client",
           },
           {
             headers: {
