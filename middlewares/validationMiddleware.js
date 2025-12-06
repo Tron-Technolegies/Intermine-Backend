@@ -280,3 +280,12 @@ export const validateRecieveMessage = withValidationErrors([
     .notEmpty()
     .withMessage("Service Provider is required"),
 ]);
+
+//Pending Messages
+export const validateEditPendingMessage = withValidationErrors([
+  body("id").notEmpty().withMessage("Message Id is required"),
+  body("message").notEmpty().withMessage("message is required"),
+  body("serviceProviderId")
+    .notEmpty()
+    .withMessage("Service Provider Id is required"),
+]);

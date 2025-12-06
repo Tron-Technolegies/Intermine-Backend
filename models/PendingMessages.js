@@ -12,6 +12,9 @@ const PendingMessageSchema = new Schema(
     clientName: {
       type: String,
     },
+    serviceProviderId: {
+      type: String,
+    },
     miner: {
       type: String,
     },

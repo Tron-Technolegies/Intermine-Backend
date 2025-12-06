@@ -5,7 +5,7 @@ import PendingMessage from "../models/PendingMessages.js";
 //save pending message from Dahab
 export const recieveMessage = async (req, res) => {
   try {
-    const { issueId, message, serviceProvider } = req.body;
+    const { issueId, message, serviceProvider, serviceProviderId } = req.body;
     const issue = await Issue.findById(issueId)
       .populate("issue", "issueType")
       .populate("user", "clientName")
@@ -19,6 +19,7 @@ export const recieveMessage = async (req, res) => {
       miner: issue.miner.model,
       serialNumber: issue.miner.serialNumber,
       sendBy: serviceProvider,
+      serviceProviderId: serviceProviderId,
       status: "Pending",
     });
     res.status(200).json({ message: "success" });
